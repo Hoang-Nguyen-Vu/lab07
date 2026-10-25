@@ -1,28 +1,35 @@
 //Hoàng Nguyên Vũ
 //202419020
+using System;
 namespace DeviceManagement
 {
     public class ProjectorRemote : TeachingDevice
     {
-        public ProjectorRemote(
-            string deviceId,
-            string name,
-            int yearOfUse,
-            decimal price,
-            int maxBorrowDays = 1,
-            DeviceStatus status = DeviceStatus.Available)
-            : base(deviceId, name, yearOfUse, price, maxBorrowDays, status)
+        public int BatteryLevel { get; private set; }
+
+        public ProjectorRemote(string id, string name, string storageLocation, int batteryLevel, DeviceStatus status = DeviceStatus.Available)
+            : base(id, name, storageLocation, status)
         {
+            if (batteryLevel < 0 || batteryLevel > 100)
+            {
+                throw new ArgumentOutOfRangeException("batteryLevel", "Mức pin của điều khiển máy chiếu phải từ 0% đến 100%.");
+            }
+            BatteryLevel = batteryLevel;
         }
 
-        public override decimal CalculateAnnualMaintenanceCost()
+        public override bool IsReadyForUse()
         {
-            return price * 0.08m;
+            return Status == DeviceStatus.Available && BatteryLevel >= 20;
+        }
+
+        public override double GetDefaultPriorityScore()
+        {
+            return BatteryLevel;
         }
 
         public override string ToString()
         {
-            return "[Điều Khiển Máy Chiếu] " + base.ToString();
+            return base.ToString() + " | Pin: " + BatteryLevel + "% | Điểm ưu tiên: " + GetDefaultPriorityScore() + " | Sẵn sàng: " + IsReadyForUse();
         }
     }
 }

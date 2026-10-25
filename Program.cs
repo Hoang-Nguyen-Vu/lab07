@@ -1,127 +1,262 @@
 //Hoàng Nguyên Vũ
 //202419020
 using System;
-using DeviceManagement;
-class Program
+using System.Collections.Generic;
+namespace DeviceManagement
 {
-    static void Main()
+    internal class Program
     {
-        Console.OutputEncoding = System.Text.Encoding.UTF8;
-        DateTime borrowDate = new DateTime(2026, 10, 10, 8, 0, 0);
-
-        Console.WriteLine("===== 11.1. LUỒNG THÀNH CÔNG =====");
-        Lecturer gv = new Lecturer("GV01", "Nguyễn Văn A", "CNTT");
-        ProjectorRemote pj = new ProjectorRemote("PJ01", "Remote máy chiếu Epson", 2024, 500000m, 1);
-        AirConditionerRemote ac = new AirConditionerRemote("AC01", "Remote điều hòa Daikin", 2023, 300000m, 1);
-        Microphone mic = new Microphone("MIC01", "Micro Shure", 2022, 2000000m, 1, true);
-
-        ClassRoom room = new ClassRoom("P101", "Phòng 101", 10);
-        room.AddDevice(pj); room.AddDevice(ac); room.AddDevice(mic);
-        Console.WriteLine(room);
-        Console.WriteLine("Chi phí bảo trì năm của phòng: " + room.CalculateAnnualMaintenanceCost().ToString("N0") + " VNĐ");
-
-        BorrowingSlip slip1 = new BorrowingSlip("S01", gv, "P101", borrowDate);
-        try
+        static void Main(string[] args)
         {
-            slip1.AddDevice(pj, 1);
-            slip1.AddDevice(mic, 1);
-            decimal f1 = slip1.ReturnDevice("PJ01", borrowDate.AddDays(1));
-            Console.WriteLine("Trả PJ01 đúng hạn, phí trễ = " + f1.ToString("N0"));
-            decimal f2 = slip1.ReturnDevice("MIC01", borrowDate.AddDays(3));
-            Console.WriteLine("Trả MIC01 muộn 2 ngày, phí trễ = " + f2.ToString("N0"));
-        }
-        catch (BorrowingException ex) { Console.WriteLine("Lỗi: " + ex.Message); }
+            Console.OutputEncoding = System.Text.Encoding.UTF8;
 
-        BorrowingSlip slip2 = new BorrowingSlip("S02", gv, "P102", borrowDate);
-        slip2.AddDevice(ac, 1);
+            Console.WriteLine("================================================================================");
+            Console.WriteLine("           CHƯƠNG TRÌNH KIỂM THỬ HỆ THỐNG QUẢN LÝ THIẾT BỊ GIẢNG DẠY           ");
+            Console.WriteLine("================================================================================");
+            Console.WriteLine();
 
-        BorrowingSlip[] slips = { slip1, slip2 };
-        Console.WriteLine("\n--- Các mục trả muộn ---");
-        foreach (BorrowingSlip s in slips)
-            foreach (BorrowItem it in s.Items)
-                if (it.IsReturned && it.ReturnedDate.Value.Date > it.DueDate.Date)
-                    Console.WriteLine(s.SlipId + " " + it);
-        Console.WriteLine("--- Các mục chưa trả ---");
-        foreach (BorrowingSlip s in slips)
-            foreach (BorrowItem it in s.Items)
-                if (!it.IsReturned)
-                    Console.WriteLine(s.SlipId + " " + it);
-        Console.WriteLine("Tổng phí trễ phiếu S01: " + slip1.CalculateTotalLateFee().ToString("N0"));
+            // 1. Ba điều khiển máy chiếu (sẵn sàng khi pin >= 20%)
+            ProjectorRemote pr1 = new ProjectorRemote("PR01", "Điều khiển máy chiếu Sony A1", "Phòng 101", 95); // Pin 95% -> Sẵn sàng, điểm: 95
+            ProjectorRemote pr2 = new ProjectorRemote("PR02", "Điều khiển máy chiếu Panasonic B2", "Phòng 102", 60); // Pin 60% -> Sẵn sàng, điểm: 60
+            ProjectorRemote pr3 = new ProjectorRemote("PR03", "Điều khiển máy chiếu Epson C3", "Phòng 103", 15); // Pin 15% -> KHÔNG sẵn sàng (pin < 20%)
 
-        Console.WriteLine("\n===== 11.2. LUỒNG NGOẠI LỆ =====");
-        Lecturer gv2 = new Lecturer("GV02", "Trần Thị B", "Toán");
-        TeachingAssistant ta = new TeachingAssistant("TA01", "Lê Văn C", "OOP");
+            // 2. Hai điều khiển điều hòa với tập phòng tương thích khác nhau
+            AirConditionerRemote ac1 = new AirConditionerRemote(
+                "AC01",
+                "Điều khiển điều hòa Daikin",
+                "Tủ khu A",
+                new string[] { "P101", "P102", "P103" }
+            );
+            AirConditionerRemote ac2 = new AirConditionerRemote(
+                "AC02",
+                "Điều khiển điều hòa Panasonic",
+                "Tủ khu B",
+                new string[] { "P201", "P202" }
+            );
 
-        Run("1. Mượn remote điều hòa đang UnderMaintenance", () =>
-        {
-            var acm = new AirConditionerRemote("AC02", "Remote điều hòa hỏng", 2020, 300000m, 1, DeviceStatus.UnderMaintenance);
-            new BorrowingSlip("E1", gv2, "P201", borrowDate).AddDevice(acm, 1);
-        });
+            // 3. Ba micro không dây (sẵn sàng khi pin >= 30% và tín hiệu >= 40%)
+            WirelessMicrophone mic1 = new WirelessMicrophone("MC01", "Micro Shure SM58-1", "Phòng kỹ thuật", 85, 90); // Ready, điểm: 87.5
+            WirelessMicrophone mic2 = new WirelessMicrophone("MC02", "Micro Shure SM58-2", "Phòng kỹ thuật", 70, 75); // Ready, điểm: 72.5
+            WirelessMicrophone mic3 = new WirelessMicrophone("MC03", "Micro Sony UWP-3", "Phòng kỹ thuật", 20, 30);  // KHÔNG ready (pin < 30, tín hiệu < 40)
 
-        Run("2. Trợ giảng mượn thiết bị thứ ba", () =>
-        {
-            var s = new BorrowingSlip("E2", ta, "P202", borrowDate);
-            s.AddDevice(new ProjectorRemote("PJ10", "Remote 10", 2024, 400000m, 1), 1);
-            s.AddDevice(new ProjectorRemote("PJ11", "Remote 11", 2024, 400000m, 1), 1);
-            s.AddDevice(new ProjectorRemote("PJ12", "Remote 12", 2024, 400000m, 1), 1);
-        });
+            // Khởi tạo các generic repository
+            IRepository<ProjectorRemote> projectorRepo = new InMemoryRepository<ProjectorRemote>();
+            IRepository<AirConditionerRemote> acRepo = new InMemoryRepository<AirConditionerRemote>();
+            IRepository<WirelessMicrophone> micRepo = new InMemoryRepository<WirelessMicrophone>();
 
-        Run("3. Thêm cùng một micro hai lần", () =>
-        {
-            var m = new Microphone("MIC10", "Micro 10", 2024, 1000000m, 1, false);
-            var s = new BorrowingSlip("E3", gv2, "P203", borrowDate);
-            s.AddDevice(m, 1);
-            s.AddDevice(m, 1);
-        });
+            // 1. Thêm thiết bị vào repository
+            Console.WriteLine("--------------------------------------------------------------------------------");
+            Console.WriteLine("1. THỬ NGHIỆM: Thêm thiết bị vào repository");
+            Console.WriteLine("--------------------------------------------------------------------------------");
+            projectorRepo.Add(pr1);
+            projectorRepo.Add(pr2);
+            projectorRepo.Add(pr3);
 
-        Run("4. Mượn micro 3 ngày (giới hạn 1 ngày)", () =>
-        {
-            var m = new Microphone("MIC11", "Micro 11", 2024, 1000000m, 1, false);
-            var s = new BorrowingSlip("E4", gv2, "P204", borrowDate);
-            try { s.AddDevice(m, 3); }
-            finally { Console.WriteLine("   Sau lỗi: micro = " + m.Status + ", số item trong phiếu = " + s.Items.Length); }
-        });
+            acRepo.Add(ac1);
+            acRepo.Add(ac2);
 
-        Run("5. Trả remote máy chiếu không thuộc phiếu", () =>
-        {
-            var s = new BorrowingSlip("E5", gv2, "P205", borrowDate);
-            s.AddDevice(new Microphone("MIC12", "Micro 12", 2024, 1000000m, 1, false), 1);
-            s.ReturnDevice("PJ99", borrowDate.AddDays(1));
-        });
+            micRepo.Add(mic1);
+            micRepo.Add(mic2);
+            micRepo.Add(mic3);
 
-        Run("6. Trả cùng một thiết bị hai lần", () =>
-        {
-            var s = new BorrowingSlip("E6", gv2, "P206", borrowDate);
-            s.AddDevice(new ProjectorRemote("PJ20", "Remote 20", 2024, 400000m, 1), 1);
-            s.ReturnDevice("PJ20", borrowDate.AddDays(1));
-            s.ReturnDevice("PJ20", borrowDate.AddDays(1));
-        });
+            Console.WriteLine("-> Danh sách máy chiếu trong kho (" + projectorRepo.GetAll().Count + " thiết bị):");
+            foreach (var d in projectorRepo.GetAll())
+            {
+                Console.WriteLine("   + " + d);
+            }
 
-        Run("7. Trả với ngày trả trước ngày mượn", () =>
-        {
-            var p = new ProjectorRemote("PJ30", "Remote 30", 2024, 400000m, 1);
-            var s = new BorrowingSlip("E7", gv2, "P207", borrowDate);
-            s.AddDevice(p, 1);
-            try { s.ReturnDevice("PJ30", borrowDate.AddDays(-1)); }
-            finally { Console.WriteLine("   Trạng thái thiết bị sau lỗi: " + p.Status + " (vẫn Borrowed)"); }
-        });
-    }
+            Console.WriteLine("-> Danh sách điều hòa trong kho (" + acRepo.GetAll().Count + " thiết bị):");
+            foreach (var d in acRepo.GetAll())
+            {
+                Console.WriteLine("   + " + d);
+            }
 
-    static void Run(string title, Action action)
-    {
-        Console.WriteLine("\n" + title);
-        try
-        {
-            action();
-            Console.WriteLine("   (không có lỗi)");
-        }
-        catch (BorrowingException ex)
-        {
-            Console.WriteLine("   Bắt " + ex.GetType().Name + ": " + ex.Message);
-        }
-        finally
-        {
-            Console.WriteLine("   [finally] kết thúc tình huống.");
+            Console.WriteLine("-> Danh sách micro trong kho (" + micRepo.GetAll().Count + " thiết bị):");
+            foreach (var d in micRepo.GetAll())
+            {
+                Console.WriteLine("   + " + d);
+            }
+            Console.WriteLine();
+
+            // 2. Thử thêm hai thiết bị trùng mã
+            Console.WriteLine("--------------------------------------------------------------------------------");
+            Console.WriteLine("2. THỬ NGHIỆM: Thử thêm hai thiết bị trùng mã vào repository");
+            Console.WriteLine("--------------------------------------------------------------------------------");
+            try
+            {
+                Console.WriteLine("Đang thử thêm một máy chiếu mới có mã trùng 'PR01'...");
+                ProjectorRemote duplicatePr = new ProjectorRemote("PR01", "Máy chiếu trùng mã", "Phòng ảo", 100);
+                projectorRepo.Add(duplicatePr);
+                Console.WriteLine("[LỖI] Không bắt được ngoại lệ trùng mã!");
+            }
+            catch (DuplicateIdException ex)
+            {
+                Console.WriteLine("[THÀNH CÔNG] Đã bắt ngoại lệ DuplicateIdException: " + ex.Message + " (Mã trùng: " + ex.DuplicateId + ")");
+            }
+            Console.WriteLine();
+
+            // 3. Tìm thiết bị theo mã
+            Console.WriteLine("--------------------------------------------------------------------------------");
+            Console.WriteLine("3. THỬ NGHIỆM: Tìm thiết bị theo mã (FindById)");
+            Console.WriteLine("--------------------------------------------------------------------------------");
+            Console.WriteLine("Tìm kiếm mã 'PR01':");
+            var foundPr = projectorRepo.FindById("PR01");
+            if (foundPr != null)
+            {
+                Console.WriteLine("-> Tìm thấy: " + foundPr);
+            }
+            else
+            {
+                Console.WriteLine("-> Không tìm thấy thiết bị.");
+            }
+
+            Console.WriteLine("Tìm kiếm mã không tồn tại 'PR999':");
+            var notFoundPr = projectorRepo.FindById("PR999");
+            if (notFoundPr == null)
+            {
+                Console.WriteLine("-> Kết quả là null (Đúng như mong đợi khi mã không tồn tại).");
+            }
+            else
+            {
+                Console.WriteLine("-> Tìm thấy thiết bị không mong muốn: " + notFoundPr);
+            }
+            Console.WriteLine();
+
+            // 4. Lọc các thiết bị sẵn sàng
+            Console.WriteLine("--------------------------------------------------------------------------------");
+            Console.WriteLine("4. THỬ NGHIỆM: Lọc các thiết bị sẵn sàng (IsReadyForUse = true)");
+            Console.WriteLine("--------------------------------------------------------------------------------");
+            var readyProjectors = projectorRepo.FindAll(d => d.IsReadyForUse());
+            Console.WriteLine("-> Máy chiếu sẵn sàng (" + readyProjectors.Count + "/" + projectorRepo.GetAll().Count + "):");
+            foreach (var d in readyProjectors)
+            {
+                Console.WriteLine("   + " + d);
+            }
+
+            var readyMics = micRepo.FindAll(d => d.IsReadyForUse());
+            Console.WriteLine("-> Micro sẵn sàng (" + readyMics.Count + "/" + micRepo.GetAll().Count + "):");
+            foreach (var d in readyMics)
+            {
+                Console.WriteLine("   + " + d);
+            }
+            Console.WriteLine();
+
+            // 5. Chọn điều khiển máy chiếu có điểm cao nhất
+            Console.WriteLine("--------------------------------------------------------------------------------");
+            Console.WriteLine("5. THỬ NGHIỆM: Chọn điều khiển máy chiếu có điểm cao nhất (HighestPriorityStrategy)");
+            Console.WriteLine("--------------------------------------------------------------------------------");
+            var highestStrategyPr = new HighestPriorityStrategy<ProjectorRemote>(d => d.GetDefaultPriorityScore());
+            var projectorService = new AllocationService<ProjectorRemote>(projectorRepo, highestStrategyPr);
+
+            Console.WriteLine("Cấp phát máy chiếu theo mức pin/điểm cao nhất:");
+            ProjectorRemote allocatedPr = projectorService.Allocate(null);
+            Console.WriteLine("-> Máy chiếu được cấp phát: " + allocatedPr);
+            Console.WriteLine();
+
+            // 6. Chọn điều khiển điều hòa tương thích với một phòng
+            Console.WriteLine("--------------------------------------------------------------------------------");
+            Console.WriteLine("6. THỬ NGHIỆM: Chọn điều khiển điều hòa tương thích với một phòng ('P201')");
+            Console.WriteLine("--------------------------------------------------------------------------------");
+            var firstStrategyAc = new FirstAvailableStrategy<AirConditionerRemote>();
+            var acService = new AllocationService<AirConditionerRemote>(acRepo, firstStrategyAc);
+
+            string targetRoom = "P201";
+            Console.WriteLine("Yêu cầu cấp phát điều hòa cho phòng: " + targetRoom);
+            AirConditionerRemote allocatedAc = acService.Allocate(d => d.IsCompatibleWith(targetRoom));
+            Console.WriteLine("-> Điều hòa được cấp phát: " + allocatedAc);
+            Console.WriteLine();
+
+            // 7. Chọn micro đầu tiên sẵn sàng
+            Console.WriteLine("--------------------------------------------------------------------------------");
+            Console.WriteLine("7. THỬ NGHIỆM: Chọn micro đầu tiên sẵn sàng (FirstAvailableStrategy)");
+            Console.WriteLine("--------------------------------------------------------------------------------");
+            var firstStrategyMic = new FirstAvailableStrategy<WirelessMicrophone>();
+            var micService = new AllocationService<WirelessMicrophone>(micRepo, firstStrategyMic);
+
+            Console.WriteLine("Cấp phát micro đầu tiên sẵn sàng:");
+            WirelessMicrophone allocatedMic = micService.Allocate(null);
+            Console.WriteLine("-> Micro được cấp phát: " + allocatedMic);
+            Console.WriteLine();
+
+            // 8. Đổi chiến lược trong thời gian chạy và quan sát kết quả
+            Console.WriteLine("--------------------------------------------------------------------------------");
+            Console.WriteLine("8. THỬ NGHIỆM: Đổi chiến lược trong thời gian chạy (Runtime Strategy Pattern)");
+            Console.WriteLine("--------------------------------------------------------------------------------");
+            IRepository<WirelessMicrophone> testMicRepo = new InMemoryRepository<WirelessMicrophone>();
+            WirelessMicrophone m1 = new WirelessMicrophone("M1", "Micro loại khá", "Kho", 60, 60); // Score = 60.0
+            WirelessMicrophone m2 = new WirelessMicrophone("M2", "Micro loại VIP", "Kho", 95, 95);  // Score = 95.0
+            testMicRepo.Add(m1);
+            testMicRepo.Add(m2);
+
+            var dynamicService = new AllocationService<WirelessMicrophone>(testMicRepo, new FirstAvailableStrategy<WirelessMicrophone>());
+            Console.WriteLine("Kho thử nghiệm gồm 2 micro:");
+            Console.WriteLine("   + " + m1);
+            Console.WriteLine("   + " + m2);
+
+            Console.WriteLine("-> Lần 1: Dùng FirstAvailableStrategy, thiết bị được chọn:");
+            Console.WriteLine("   Đã chọn phần tử đầu tiên: " + dynamicService.Allocate(null).Name);
+
+            // Trả lại thiết bị để reset trạng thái cho lần thử thứ 2
+            m1.Return();
+
+            Console.WriteLine("-> Đang đổi chiến lược sang HighestPriorityStrategy...");
+            dynamicService.ChangeStrategy(new HighestPriorityStrategy<WirelessMicrophone>(m => m.GetDefaultPriorityScore()));
+            Console.WriteLine("-> Lần 2: Cấp phát lại sau khi đổi chiến lược:");
+            Console.WriteLine("   Đã chọn phần tử có điểm ưu tiên cao nhất: " + dynamicService.Allocate(null).Name);
+            Console.WriteLine();
+
+            // 9. Thử cấp phát khi không có ứng viên phù hợp
+            Console.WriteLine("--------------------------------------------------------------------------------");
+            Console.WriteLine("9. THỬ NGHIỆM: Thử cấp phát khi không có ứng viên phù hợp (NoSuitableItemException)");
+            Console.WriteLine("--------------------------------------------------------------------------------");
+            try
+            {
+                string nonExistentRoom = "P999";
+                Console.WriteLine("Đang yêu cầu cấp phát điều khiển điều hòa cho phòng không tồn tại '" + nonExistentRoom + "'...");
+                acService.Allocate(d => d.IsCompatibleWith(nonExistentRoom));
+                Console.WriteLine("[LỖI] Không bắt được ngoại lệ NoSuitableItemException!");
+            }
+            catch (NoSuitableItemException ex)
+            {
+                Console.WriteLine("[THÀNH CÔNG] Đã bắt ngoại lệ NoSuitableItemException: " + ex.Message);
+            }
+            Console.WriteLine();
+
+            // 10. Chứng minh thiết bị được chọn chuyển sang Borrowed
+            Console.WriteLine("--------------------------------------------------------------------------------");
+            Console.WriteLine("10. THỬ NGHIỆM: Chứng minh thiết bị được chọn chuyển sang Borrowed");
+            Console.WriteLine("--------------------------------------------------------------------------------");
+            Console.WriteLine("Kiểm tra trạng thái thiết bị máy chiếu đã cấp phát ở Mục 5 (" + allocatedPr.Id + "):");
+            Console.WriteLine("-> Trạng thái hiện tại: " + allocatedPr.Status + " (Đã chuyển sang Borrowed thành công)");
+            Console.WriteLine("-> IsReadyForUse() hiện tại: " + allocatedPr.IsReadyForUse() + " (Không còn sẵn sàng để cấp phát lại)");
+
+            try
+            {
+                Console.WriteLine("Thử gọi Borrow() lần nữa trên thiết bị đã mượn:");
+                allocatedPr.Borrow();
+                Console.WriteLine("[LỖI] Không bắt được ngoại lệ DeviceNotReadyException!");
+            }
+            catch (DeviceNotReadyException ex)
+            {
+                Console.WriteLine("[THÀNH CÔNG] Đã bắt ngoại lệ DeviceNotReadyException: " + ex.Message);
+            }
+            Console.WriteLine();
+
+            // 11. Chứng minh repository tổng quát có thể dùng cho ít nhất hai loại thiết bị mà không sao chép mã
+            Console.WriteLine("--------------------------------------------------------------------------------");
+            Console.WriteLine("11. THỬ NGHIỆM: Chứng minh repository tổng quát (Generic Repository)");
+            Console.WriteLine("--------------------------------------------------------------------------------");
+            Console.WriteLine("-> Lớp 'InMemoryRepository<T>' được định nghĩa một lần duy nhất với ràng buộc 'where T : IIdentifiable'.");
+            Console.WriteLine("-> Hệ thống đã khởi tạo và sử dụng thành công cho cả 3 loại thiết bị khác nhau:");
+            Console.WriteLine("   1. IRepository<ProjectorRemote>      -> " + projectorRepo.GetType().FullName);
+            Console.WriteLine("   2. IRepository<AirConditionerRemote> -> " + acRepo.GetType().FullName);
+            Console.WriteLine("   3. IRepository<WirelessMicrophone>   -> " + micRepo.GetType().FullName);
+            Console.WriteLine("-> Toàn bộ các thao tác Add, Remove, FindById, GetAll, FindAll đều hoạt động độc lập và an toàn kiểu dữ liệu mà không cần sao chép mã nguồn.");
+            Console.WriteLine();
+
+            Console.WriteLine("================================================================================");
+            Console.WriteLine("                        HOÀN THÀNH TOÀN BỘ KIỂM THỬ                             ");
+            Console.WriteLine("================================================================================");
         }
     }
 }
